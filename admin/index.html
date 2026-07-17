@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة إدارة التراخيص</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c1220; --surface:#151d30; --surface-2:#1c2540; --line:#2a3450;
+    --amber:#f2a93b; --teal:#35c7c0; --text:#edeff4; --muted:#8891a5; --danger:#e2574c;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans Arabic',sans-serif; padding: 20px;
+    max-width: 640px; margin:0 auto;
+  }
+  h1{ font-size:22px; margin: 10px 0 4px; }
+  .sub{ color:var(--muted); font-size:13px; margin-bottom:24px; }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px; margin-bottom:20px;
+  }
+  .card h2{ font-size:16px; margin:0 0 16px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  .field input, .field select{
+    width:100%; padding:12px 13px; background:var(--surface-2); border:1px solid var(--line);
+    color:var(--text); border-radius:9px; font-family:'JetBrains Mono',monospace; font-size:14px;
+  }
+  .field input:focus, .field select:focus{ outline:none; border-color:var(--teal); }
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  button{
+    width:100%; padding:13px; border:none; border-radius:9px; cursor:pointer;
+    background:var(--amber); color:#1a1206; font-weight:700; font-size:15px;
+    font-family:'IBM Plex Sans Arabic',sans-serif;
+  }
+  button:active{ transform:scale(.98); }
+  button:disabled{ opacity:.6; }
+  .btn-secondary{ background:transparent; border:1px solid var(--line); color:var(--text); margin-top:8px; }
+  #createResult{
+    margin-top:14px; padding:14px; border-radius:9px; display:none; font-size:14px;
+  }
+  #createResult.ok{ display:block; background:rgba(53,199,192,.1); border:1px solid rgba(53,199,192,.35); }
+  #createResult.err{ display:block; background:rgba(226,87,76,.1); border:1px solid rgba(226,87,76,.35); color:var(--danger); }
+  .key-box{
+    font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);
+    background:var(--surface-2); padding:14px; border-radius:9px; text-align:center;
+    margin: 10px 0; letter-spacing:1px; user-select:all;
+  }
+  .copy-hint{ font-size:12px; color:var(--muted); text-align:center; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th, td{ text-align:right; padding:9px 6px; border-bottom:1px solid var(--line); }
+  th{ color:var(--muted); font-weight:500; }
+  .badge{ padding:3px 8px; border-radius:99px; font-size:11px; font-family:'JetBrains Mono',monospace; }
+  .badge.active{ background:rgba(53,199,192,.15); color:var(--teal); }
+  .badge.expired{ background:rgba(226,87,76,.15); color:var(--danger); }
+  .badge.suspended{ background:rgba(242,169,59,.15); color:var(--amber); }
+  .setup{ font-size:13px; color:var(--muted); line-height:1.8; }
+  .setup code{ background:var(--surface-2); padding:2px 6px; border-radius:5px; color:var(--teal); }
+  .toolbar{ display:flex; gap:8px; margin-bottom:12px; }
+  .toolbar input{ flex:1; }
+  .small-btn{ width:auto; padding:9px 14px; font-size:13px; }
+</style>
+</head>
+<body>
+
+<h1>🔑 لوحة إدارة التراخيص</h1>
+<p class="sub">إنشاء وإدارة مفاتيح اشتراك المشتركين</p>
+
+<div class="card" id="setupCard">
+  <h2>⚙️ الإعداد (مرة وحدة بس)</h2>
+  <div class="field">
+    <label>رابط سيرفر التراخيص</label>
+    <input id="serverUrl" placeholder="https://your-license-server.up.railway.app">
+  </div>
+  <div class="field">
+    <label>ADMIN_TOKEN (نفس اللي حطيته بملف .env بالسيرفر)</label>
+    <input id="adminToken" type="password" placeholder="التوكن السري">
+  </div>
+  <button onclick="saveSettings()">حفظ الإعدادات بهذا الجهاز</button>
+  <p class="setup" style="margin-top:10px">تُحفظ هذي القيم بمتصفحك فقط (ما ترسل لأي مكان غير سيرفرك). لازم تسويها مرة وحدة بكل جهاز تستخدم منه اللوحة.</p>
+</div>
+
+<div class="card">
+  <h2>➕ إنشاء ترخيص جديد</h2>
+  <div class="field">
+    <label>اسم المشترك</label>
+    <input id="customerName" placeholder="مثال: أحمد محمد">
+  </div>
+  <div class="field">
+    <label>رقم هاتف المشترك (اختياري)</label>
+    <input id="customerContact" placeholder="07901234567">
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>المنتج</label>
+      <select id="product">
+        <option value="personal">الشخصي ($3)</option>
+        <option value="tasheel">تسهيل ($5)</option>
+        <option value="modon">مدن ($5)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>نوع الاشتراك</label>
+      <select id="plan">
+        <option value="monthly">شهري</option>
+        <option value="yearly">سنوي</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label>عدد الأجهزة المسموحة</label>
+    <input id="maxDevices" type="number" value="1" min="1">
+  </div>
+  <button onclick="createLicense()" id="createBtn">إنشاء المفتاح</button>
+  <div id="createResult"></div>
+</div>
+
+<div class="card">
+  <h2>📋 كل التراخيص</h2>
+  <div class="toolbar">
+    <input id="searchBox" placeholder="بحث بالاسم أو المفتاح...">
+    <button class="small-btn" onclick="loadLicenses()">تحديث</button>
+  </div>
+  <div id="licensesTable">
+    <p class="sub">اضغط "تحديث" بعد ما تحفظ الإعدادات فوق</p>
+  </div>
+</div>
+
+<script>
+  function getSettings(){
+    return {
+      url: localStorage.getItem('admin_server_url') || '',
+      token: localStorage.getItem('admin_token') || ''
+    };
+  }
+
+  function saveSettings(){
+    const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+    const token = document.getElementById('adminToken').value.trim();
+    if(!url || !token){ alert('عبّي الرابط والتوكن أول'); return; }
+    localStorage.setItem('admin_server_url', url);
+    localStorage.setItem('admin_token', token);
+    alert('تم الحفظ ✓');
+    loadLicenses();
+  }
+
+  window.addEventListener('load', () => {
+    const s = getSettings();
+    if(s.url) document.getElementById('serverUrl').value = s.url;
+    if(s.token) document.getElementById('adminToken').value = s.token;
+    if(s.url && s.token) loadLicenses();
+  });
+
+  async function createLicense(){
+    const s = getSettings();
+    if(!s.url || !s.token){ alert('سوّي الإعداد فوق أول'); return; }
+
+    const btn = document.getElementById('createBtn');
+    const result = document.getElementById('createResult');
+    btn.disabled = true; btn.textContent = 'جاري الإنشاء...';
+
+    const body = {
+      customerName: document.getElementById('customerName').value.trim(),
+      customerContact: document.getElementById('customerContact').value.trim(),
+      product: document.getElementById('product').value,
+      plan: document.getElementById('plan').value,
+      maxDevices: Number(document.getElementById('maxDevices').value) || 1
+    };
+
+    try{
+      const res = await fetch(s.url + '/api/admin/licenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': s.token },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+
+      if(!res.ok){
+        result.className = 'err';
+        result.innerHTML = '❌ ' + (data.error || 'صار خطأ');
+      }else{
+        result.className = 'ok';
+        result.innerHTML = `
+          <div>✅ تم إنشاء المفتاح، انسخه وأرسله للمشترك:</div>
+          <div class="key-box" onclick="copyKey(this)">${data.license_key}</div>
+          <div class="copy-hint">اضغط عالمفتاح لنسخه</div>
+        `;
+        loadLicenses();
+      }
+    }catch(err){
+      result.className = 'err';
+      result.innerHTML = '❌ تعذر الاتصال بالسيرفر. تأكد من الرابط.';
+    }finally{
+      btn.disabled = false; btn.textContent = 'إنشاء المفتاح';
+    }
+  }
+
+  function copyKey(el){
+    navigator.clipboard.writeText(el.textContent.trim());
+    el.style.opacity = '.6';
+    setTimeout(() => el.style.opacity = '1', 200);
+  }
+
+  function statusBadge(license){
+    const expired = new Date(license.expires_at) < new Date();
+    if(license.status === 'suspended') return '<span class="badge suspended">موقوف</span>';
+    if(expired) return '<span class="badge expired">منتهي</span>';
+    return '<span class="badge active">فعّال</span>';
+  }
+
+  async function loadLicenses(){
+    const s = getSettings();
+    if(!s.url || !s.token) return;
+
+    const q = document.getElementById('searchBox').value.trim();
+    const container = document.getElementById('licensesTable');
+    container.innerHTML = '<p class="sub">جاري التحميل...</p>';
+
+    try{
+      const url = s.url + '/api/admin/licenses' + (q ? '?q=' + encodeURIComponent(q) : '');
+      const res = await fetch(url, { headers: { 'x-admin-token': s.token } });
+      const rows = await res.json();
+
+      if(!Array.isArray(rows) || rows.length === 0){
+        container.innerHTML = '<p class="sub">ما فيه تراخيص لحد الآن</p>';
+        return;
+      }
+
+      const productNames = { personal: 'الشخصي', tasheel: 'تسهيل', modon: 'مدن', all: 'الكل' };
+
+      let html = '<table><tr><th>المفتاح</th><th>الزبون</th><th>المنتج</th><th>الحالة</th></tr>';
+      rows.forEach(r => {
+        html += `<tr>
+          <td style="font-family:'JetBrains Mono',monospace">${r.license_key}</td>
+          <td>${r.customer_name || '—'}</td>
+          <td>${productNames[r.product] || r.product}</td>
+          <td>${statusBadge(r)}</td>
+        </tr>`;
+      });
+      html += '</table>';
+      container.innerHTML = html;
+    }catch(err){
+      container.innerHTML = '<p class="sub" style="color:var(--danger)">تعذر تحميل القائمة</p>';
+    }
+  }
+
+  document.getElementById('searchBox').addEventListener('keyup', (e) => {
+    if(e.key === 'Enter') loadLicenses();
+  });
+</script>
+
+</body>
+</html>
