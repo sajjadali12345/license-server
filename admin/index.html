@@ -50,7 +50,8 @@
     margin: 10px 0; letter-spacing:1px; user-select:all;
   }
   .copy-hint{ font-size:12px; color:var(--muted); text-align:center; }
-  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  table{ width:100%; border-collapse:collapse; font-size:12px; white-space:nowrap; }
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   th, td{ text-align:right; padding:9px 6px; border-bottom:1px solid var(--line); }
   th{ color:var(--muted); font-weight:500; }
   .badge{ padding:3px 8px; border-radius:99px; font-size:11px; font-family:'JetBrains Mono',monospace; }
@@ -106,6 +107,7 @@
       <label>نوع الاشتراك</label>
       <select id="plan">
         <option value="monthly">شهري</option>
+        <option value="semiannual">نصف سنوي (6 أشهر)</option>
         <option value="yearly">سنوي</option>
       </select>
     </div>
@@ -147,6 +149,7 @@
     loadLicenses();
   }
 
+  // تعبئة الحقول المحفوظة سابقاً
   window.addEventListener('load', () => {
     const s = getSettings();
     if(s.url) document.getElementById('serverUrl').value = s.url;
@@ -230,18 +233,22 @@
       }
 
       const productNames = { personal: 'الشخصي', tasheel: 'تسهيل', modon: 'مدن', all: 'الكل' };
+      const planNames = { monthly: 'شهري', semiannual: 'نصف سنوي', yearly: 'سنوي' };
 
-      let html = '<table><tr><th>المفتاح</th><th>الزبون</th><th>المنتج</th><th>الحالة</th></tr>';
+      let html = '<table><tr><th>المفتاح</th><th>الزبون</th><th>المنتج</th><th>النوع</th><th>ينتهي</th><th>الحالة</th></tr>';
       rows.forEach(r => {
+        const expiryDate = new Date(r.expires_at).toLocaleDateString('ar-IQ');
         html += `<tr>
           <td style="font-family:'JetBrains Mono',monospace">${r.license_key}</td>
           <td>${r.customer_name || '—'}</td>
           <td>${productNames[r.product] || r.product}</td>
+          <td>${planNames[r.plan] || r.plan}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${expiryDate}</td>
           <td>${statusBadge(r)}</td>
         </tr>`;
       });
       html += '</table>';
-      container.innerHTML = html;
+      container.innerHTML = `<div class="table-scroll">${html}</div>`;
     }catch(err){
       container.innerHTML = '<p class="sub" style="color:var(--danger)">تعذر تحميل القائمة</p>';
     }
