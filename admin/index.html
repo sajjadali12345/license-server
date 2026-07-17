@@ -63,6 +63,11 @@
   .toolbar{ display:flex; gap:8px; margin-bottom:12px; }
   .toolbar input{ flex:1; }
   .small-btn{ width:auto; padding:9px 14px; font-size:13px; }
+  .price-hint{
+    background:rgba(242,169,59,.1); border:1px solid rgba(242,169,59,.3);
+    border-radius:9px; padding:10px 13px; font-size:13.5px; margin-bottom:14px; text-align:center;
+  }
+  .price-hint strong{ color:var(--amber); font-family:'JetBrains Mono',monospace; }
 </style>
 </head>
 <body>
@@ -98,9 +103,9 @@
     <div class="field">
       <label>المنتج</label>
       <select id="product">
-        <option value="personal">الشخصي ($3)</option>
-        <option value="tasheel">تسهيل ($5)</option>
-        <option value="modon">مدن ($5)</option>
+        <option value="personal">الشخصي</option>
+        <option value="tasheel">تسهيل</option>
+        <option value="modon">مدن</option>
       </select>
     </div>
     <div class="field">
@@ -116,6 +121,7 @@
     <label>عدد الأجهزة المسموحة</label>
     <input id="maxDevices" type="number" value="1" min="1">
   </div>
+  <div id="priceHint" class="price-hint">💰 السعر المفروض تاخذه من الزبون: <strong id="priceValue">$3</strong></div>
   <button onclick="createLicense()" id="createBtn">إنشاء المفتاح</button>
   <div id="createResult"></div>
 </div>
@@ -138,6 +144,24 @@
       token: localStorage.getItem('admin_token') || ''
     };
   }
+
+  // نفس أسعار الموقع بالضبط - لازم تبقى متطابقة مع index.html
+  const PRICES = {
+    personal: { monthly: 3, semiannual: 15, yearly: 30 },
+    tasheel:  { monthly: 5, semiannual: 25, yearly: 50 },
+    modon:    { monthly: 5, semiannual: 25, yearly: 50 }
+  };
+
+  function updatePriceHint(){
+    const product = document.getElementById('product').value;
+    const plan = document.getElementById('plan').value;
+    const price = PRICES[product] ? PRICES[product][plan] : '—';
+    document.getElementById('priceValue').textContent = '$' + price;
+  }
+
+  document.getElementById('product').addEventListener('change', updatePriceHint);
+  document.getElementById('plan').addEventListener('change', updatePriceHint);
+  window.addEventListener('load', updatePriceHint);
 
   function saveSettings(){
     const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
